@@ -1,0 +1,407 @@
+---
+title: Data Science for Industry Project 2
+author: 
+bibliography: bibliography.bib
+output:
+  pdf_document: 
+    fig_caption: yes
+    keep_tex: yes
+header-includes: 
+- \usepackage{graphicx}
+- \usepackage{float}
+- \usepackage{booktabs}
+- \usepackage{longtable}
+- \usepackage{array}
+- \usepackage{multirow}
+- \usepackage[table]{xcolor}
+- \usepackage{wrapfig}
+- \usepackage{float}
+- \usepackage{colortbl}
+- \usepackage{pdflscape}
+- \usepackage{tabu}
+- \usepackage{threeparttable}
+- \usepackage{threeparttablex}
+- \usepackage[normalem]{ulem}
+- \usepackage{makecell}
+- \usepackage[english]{babel}
+- \usepackage[utf8]{inputenc}
+- \usepackage{algorithm}
+- \usepackage[noend]{algpseudocode}
+
+
+---
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.pos = 'H')
+```
+
+\section{Introduction}
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE,tidy = TRUE,cache=TRUE,fig.align = 'center',size=10,fig.pos = 'H',tidy=TRUE)
+options(knitr.table.format = "latex")
+
+library(tidyverse)
+library(tm)
+txt_files <- list.files("~/Documents/Industry/Assignment 2/data/")
+
+sona <- data.frame(filename = as.character(), speech = as.character())
+for(i in txt_files){
+  file_name <- paste0("~/Documents/Industry/Assignment 2/data/", i)
+  
+  # import text as single character string (can also read.table but the "seperator" causes problems)
+  this_speech <- readChar(file_name, 
+                          nchars = file.info(file_name)$size)
+  
+  # make data frame with metadata (filename contains year and pres) and speech
+  this_sona <- data.frame(filename = i, speech = this_speech, stringsAsFactors = FALSE)
+  
+  # make a single dataset
+  sona <- rbind(sona, this_sona)
+}
+
+# extract year, testing
+#str_extract(sona$filename, "[0-9]")
+#str_extract_all(sona$filename, "[0-90-90-90-9]")
+#str_extract_all(sona$filename, "[0-9][0-9][0-9][0-9]")
+#str_extract_all(sona$filename, "[0-9][0-9][0-9][0-9]", simplify = T)
+#str_extract(sona$filename, "[0-9]{4}")
+
+# does the same thing
+#str_sub(sona$filename, start = 1, end = 4)
+
+sona$year <- str_sub(sona$filename, start = 1, end = 4)
+
+# exercise: extract president name
+#str_extract_all(sona$filename,"[A-Zd](.*)(?=.txt)")
+
+# pre-processing data to get into right format for neural nets
+
+library(tidytext)
+
+# unnest_tokens is very useful, can split into words, sentences, lines, paragraphs, etc
+
+# word tokenization
+#sona %>% unnest_tokens(text, speech, token = "words")
+#add president column to sona
+
+sona=sona%>% mutate(president = str_extract(filename,"[A-Zd](.*)(?=.txt)"))
+
+
+#All the speeches by the various presidents combined
+
+sona_aggr=sona%>%group_by(president)%>%summarise(text=paste(speech, collapse ="\\n"))
+
+
+dfCorpus = Corpus(VectorSource(sona_aggr$text)) 
+dtm = DocumentTermMatrix(dfCorpus,
+                          control = list(
+                                         stopwords = TRUE, 
+                                         wordLengths=c(4, 15),
+                                         removePunctuation = T,
+                                         removeNumbers = T
+                                          )
+                                        )
+
+dtm.matrix = as.matrix(dtm)
+row.names(dtm.matrix)<-sona_aggr$president
+# we want to predict sentences, so we need to first split into sentences
+tidy_sona <- sona %>% unnest_tokens(text, speech, token = "sentences")
+tidy_sona=tidy_sona %>% mutate(president = str_extract(filename,"[A-Zd](.*)(?=.txt)"))
+# exercise: add an ID variable for sentences and tokenize each sentence by words
+tidy_sona=tidy_sona%>%mutate(sentence_id=rownames(tidy_sona))%>%
+          unnest_tokens(word,text,token = "words",drop=FALSE)%>%
+          mutate(season=ifelse(grepl('pre',filename),'pre',ifelse(grepl('post',filename),'post','normal')))
+# exercise: count how many times each word was used in each sentence
+
+
+# exercise: reshape long to wide to get into usual format for predictive models 
+# using "spread"
+
+
+```
+\section{Exploratory Data Analysis}
+
+The data set consists of 30 State of the Nation Address (SONA) speech transcripts from all the presidents from February 1994 til recently in February 2018.
+
+A hypothesis can be made that sentiments of speeches differ depending on the political season.There are 3 political seasons :
+
+\begin{enumerate}
+\item Pre-Election
+\item Post-Election
+\item Normal Term
+\end{enumerate}
+
+Below is a summary of all the speeches as per the various presidents categorized by the 3 political seasons :
+
+
+\begin{table}[h]
+\centering
+\begin{tabular}{|l|l|c|c|c|c|}
+\hline
+\multicolumn{1}{|c|}{Period} & Presidents & \multicolumn{1}{l|}{Pre-Election} & Post-Election & \multicolumn{1}{l|}{Normal Term} & \multicolumn{1}{l|}{\textbf{Total}} \\ \hline
+1994                         & de-Klerk   & 1                                 &               &                                  & \textbf{1}                          \\ \hline
+1994-1999                    & Mandela    & 1                                 & 2             & 4                                & \textbf{7}                          \\ \hline
+2000-2008                    & Mbeki      & 1                                 & 1             & 8                                & \textbf{10}                         \\ \hline
+2009                         & Motlante   & 1                                 &               &                                  & \textbf{1}                          \\ \hline
+2009-2017                    & Zuma       & 1                                 & 2             & 7                                & \textbf{10}                         \\ \hline
+2018                         & Ramaphosa  &                                   &               & 1                                & \textbf{1}                          \\ \hline
+\textbf{Total}               &            & \textbf{5}                        & \textbf{5}    & \textbf{20}                      & \textbf{30}                         \\ \hline
+\end{tabular}
+\caption{The number of SONA per president and arranged by political seasons}
+\label{my-label}
+\end{table}
+
+From the table above the following remarks can be made :
+
+\begin{itemize}
+\item de Klerk,Motlante and Ramaphosa all have one speech each which will make it extremely difficult to accurately predict given the far higher number of speeches from their counterpart presidents.
+\item There are far more speeches done during the normal season which will inherently bias the training data towards that season
+\item Mbeki and Mandela dominate the number of speeches with 10 apiece.This will also inherently bias the training data towards them.
+\item Pre-Election speeches are evenly distributed across 5 of the 6 presidents whilst post election speeches are dominated by Mandela and Zuma.
+\end{itemize}
+
+
+
+\newpage
+\subsection{Word Distribution}
+
+
+Below are the most frequently used words of all the 30 presidential speeches rescaled according to their respective political seasons : 
+
+```{r eda_season ,echo=FALSE,message=FALSE,warning=FALSE ,fig.cap='Frequently used words across political seasons'}
+library(dplyr)
+library(tidyverse)
+library(tidytext)
+library(widyr)
+library(tm)
+total_sona <- tidy_sona %>% 
+               group_by(season) %>% 
+               summarise(total = n())
+
+
+
+tidy_sona %>%
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+ggtitle("Political Seasons")+
+facet_grid(.~season)
+
+```
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+\item Notable words commonly used across all political seasons are \textbf{south}, \textbf{africa},\textbf{government},\textbf{develpment},\textbf{people},\textbf{country},\textbf{programme}.These words will potentially not assist in distinguishing the respective presidents.
+
+\item Comparing pre and post to normal political seasons ,notable words like \textbf{economy} and \textbf{growth} are introduced into their speeches .The utilisation of these words (which could imply economic growth) are understandable given that these are typical themes that need to be addressed constantly throughout the normal period of presidential terms.
+
+\item Comparing pre to post political seasons,uplifting words like \textbf{freedom},\textbf{hope},\textbf{africans} are used before and not after elections.
+
+\item Comparing pre to post political seasons,notable words introduced are \textbf{support},\textbf{system},\textbf{ensure}.These words convey a theme of action and execution which is expected after coming from an election.
+
+\end{itemize}
+
+Below are the most frequently used words of all the 30 presidential speeches rescaled according to the respective presidents : 
+
+```{r eda_presi ,echo=FALSE,message=FALSE,warning=FALSE ,fig.cap='Top words used by all presidents in SONA',fig.width=12,fig.height=8}
+
+total_sona_prezi <- tidy_sona %>% 
+               group_by(president) %>% 
+               summarise(total = n())
+
+
+
+tidy_sona %>%
+filter(!word %in% stop_words$word) %>%
+group_by(president) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona_prezi) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=president)) + 
+geom_col() + 
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+ggtitle("All Presidents")+
+facet_grid(.~president)
+
+```
+
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+\item Looking at all the presidents frequently used words ,de Klerk has the least common words.This is due to the fact that firstly there is only one speech in the dataset and secondly given that the speech was before the first democratic elections,the content will be far different to the  speeches made by the presidents that preceded in the democratic era of South Africa.
+\item Commonly used words across all presidents are \textbf{south},\textbf{government},\textbf{national} which are also common words across political seasons.
+\item Notably words commonly used across all presidents excluding deKlerk are \textbf{people},\textbf{country},\textbf{public},\textbf{ensure},\textbf{development}.
+\end{itemize}
+
+
+
+
+
+\subsection{Clustering by Term Similarity}
+
+To do this well, one should remove  infrequent words.
+
+```{r kmeans ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Cluster",fig.width=12,fig.height=12 }
+library(factoextra)
+library(ggplot2)
+dtmss <- removeSparseTerms(dtm, 0.2) # This makes a matrix that is only 20% empty space, maximum.  
+d <- dist(t(dtmss), method="euclidian") 
+df=t(dtm.matrix)
+
+
+
+km.res <- kmeans(d, 4, nstart = 25)
+
+p=fviz_cluster(km.res, data = t(dtmss),
+             palette = c("#2E9FDF", "#00AFBB", "#E7B800",'#F58E0B'), 
+             ellipse.type = "convex", # Concentration ellipse
+             star.plot = TRUE, # Add segments from centroids to items
+             #repel = TRUE, # Avoid label overplotting (slow)
+             ggtheme = theme_minimal(),
+             ggpar=list(xlim=c(-20,10))
+             )
+p+xlim(-15, 3)
+
+
+
+
+```
+
+
+
+
+
+
+```{r deKlerk ,echo=FALSE,message=FALSE,warning=FALSE }
+tidy_sona %>%
+filter(President=='deKlerk') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("deKlerk")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+
+```{r mandela ,echo=FALSE,message=FALSE,warning=FALSE }
+tidy_sona %>%
+filter(President=='Mandela') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("Mandela")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+
+
+
+
+
+
+```{r zuma ,echo=FALSE,message=FALSE,warning=FALSE }
+tidy_sona %>%
+filter(President=='Zuma') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("Zuma")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+
+```{r mbeki ,echo=FALSE,message=FALSE,warning=FALSE }
+
+tidy_sona %>%
+filter(President=='Mbeki') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("Mbeki")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+```{r Motlanthe ,echo=FALSE,message=FALSE,warning=FALSE }
+tidy_sona %>%
+filter(President=='Motlanthe') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("Motlanthe")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+```{r Ramaphosa ,echo=FALSE,message=FALSE,warning=FALSE }
+tidy_sona %>%
+filter(President=='Ramaphosa') %>%  
+filter(!word %in% stop_words$word) %>%
+group_by(season) %>% 
+count(word, sort = TRUE) %>% # count the number of times word used 
+left_join(total_sona) %>% # add the total number of tweets made (pre- or post-prez)
+mutate(freq = n/total) %>% # add relative frequencies
+filter(rank(desc(freq)) < 20) %>%
+ggplot(aes(reorder(word,freq),freq,fill=season)) + 
+geom_col() + 
+ggtitle("Ramaphosa")+
+theme_minimal()+
+coord_flip() + 
+  xlab("") +
+facet_grid(.~season)
+```
+
+
+
+
+
+
