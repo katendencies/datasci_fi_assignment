@@ -244,7 +244,7 @@ From the illustration above the following remarks can be made :
 
 Words from the respective speeches we aggregated by the respective presidents.Words greater than 4 letters were considered so as to focus primarily on descriptive words.The resultant  word counts were then normalised to avoid biases of presidents with more speeches .
 
-K means clustering was then conducted and a  $k=3$ was selected based on the 'elbow rule'.
+K means clustering was then conducted and a  $k=2$ was selected based on the 'elbow rule'.
 
 The objective is to see what frequent common words do the presidents use and what potetntial themes to these similar words posses.The resultant visualisation can be viewed below:
 
@@ -255,17 +255,19 @@ dtm = DocumentTermMatrix(dfCorpus,
                           control = list(
                                          stopwords = TRUE, 
                                          wordLengths=c(5, 15),
-                                         removeSparseTerms = 0.15,
+                                         removeSparseTerms = 0.25,
                                          removePunctuation = T,
                                          removeNumbers = T
                                           )
                                         )
+
 dtm.matrix = as.matrix(dtm)
+
 row.names(dtm.matrix)<-sona_aggr$president
 
 dtm.matrix.scaled=(apply(dtm.matrix, 1, function(x)(x-min(x))/(max(x)-min(x))))
 d <- dist(dtm.matrix.scaled, method="euclidean") 
-km.res <- kmeans(d, 3)
+km.res <- kmeans(d, 2)
 
 p=fviz_cluster(km.res, data = dtm.matrix.scaled,
              palette = c("#2E9FDF", "#00AFBB", "#E7B800",'#F58E0B','pink'), 
@@ -294,6 +296,84 @@ From the illustration above the following remarks can be made :
 
 
 
+
+\subsection{Sentiment Analysis}
+
+```{r pre_post_sentiment ,echo=FALSE,message=FALSE,warning=FALSE ,fig.cap='Pre vs Post Election Speech Sentiment over time'}
+library(tidyr)
+library(gridExtra) #`grid.arrange()` for multi-graphs
+#Define some colors to use throughout
+my_colors <- c("#E69F00", "#56B4E9", "#009E73", "#CC79A7", "#D55E00", "#D65E00")
+
+theme_lyrics <- function(aticks = element_blank(),
+                         pgminor = element_blank(),
+                         lt = element_blank(),
+                         lp = "none")
+{
+  theme(plot.title = element_text(hjust = 0.5), #Center the title
+        axis.ticks = aticks, #Set axis ticks to on or off
+        panel.grid.minor = pgminor, #Turn the minor grid lines on or off
+        legend.title = lt, #Turn the legend title on or off
+        legend.position = lp) #Turn the legend on or off
+}
+
+
+sona_bing <- tidy_sona %>%
+  inner_join(get_sentiments("bing"))
+
+
+
+pre_polarity_year <- sona_bing %>%
+  filter(season=='pre')%>%
+  count(sentiment, year) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative,percent_positive = positive / (positive + negative) * 100)
+
+post_polarity_year <- sona_bing %>%
+  filter(season=='post')%>%
+  count(sentiment, year) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative,percent_positive = positive / (positive + negative) * 100)
+
+
+
+pre_polarity_over_time <- pre_polarity_year %>%
+  ggplot(aes(year, polarity, color = ifelse(polarity>=0,my_colors[1],my_colors[4]))) +
+  geom_col() +
+  geom_smooth(method = "loess", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = my_colors[1])) +
+  theme_lyrics() + theme(plot.title = element_text(size = 11)) +
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Pre Election Speech Polarity Over Time")
+
+post_polarity_over_time <- post_polarity_year %>%
+  ggplot(aes(year, polarity, color = ifelse(polarity>=0,my_colors[1],my_colors[4]))) +
+  geom_col() +
+  geom_smooth(method = "loess", se = FALSE) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = my_colors[1])) +
+  theme_lyrics() + theme(plot.title = element_text(size = 11)) +
+  xlab(NULL) + ylab(NULL) +
+  ggtitle("Post Election Speech Polarity Over Time")
+
+
+
+
+grid.arrange(pre_polarity_over_time, post_polarity_over_time, ncol = 2)
+
+
+
+```
+
+
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+
+\item
+\item
+\item
+
+\end{itemize}
 
 
 
