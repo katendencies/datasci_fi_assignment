@@ -93,17 +93,9 @@ sona_aggr=sona%>%group_by(president)%>%summarise(text=paste(speech, collapse ="\
 
 
 dfCorpus = Corpus(VectorSource(sona_aggr$text)) 
-dtm = DocumentTermMatrix(dfCorpus,
-                          control = list(
-                                         stopwords = TRUE, 
-                                         wordLengths=c(4, 15),
-                                         removePunctuation = T,
-                                         removeNumbers = T
-                                          )
-                                        )
 
-dtm.matrix = as.matrix(dtm)
-row.names(dtm.matrix)<-sona_aggr$president
+
+
 # we want to predict sentences, so we need to first split into sentences
 tidy_sona <- sona %>% unnest_tokens(text, speech, token = "sentences")
 tidy_sona=tidy_sona %>% mutate(president = str_extract(filename,"[A-Zd](.*)(?=.txt)"))
@@ -250,33 +242,56 @@ From the illustration above the following remarks can be made :
 
 \subsection{Clustering by Term Similarity}
 
-To do this well, one should remove  infrequent words.
+Words from the respective speeches we aggregated by the respective presidents.Words greater than 4 letters were considered so as to focus primarily on descriptive words.The resultant  word counts were then normalised to avoid biases of presidents with more speeches .
 
-```{r kmeans ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Cluster",fig.width=12,fig.height=12 }
+K means clustering was then conducted and a  $k=3$ was selected based on the 'elbow rule'.
+
+The objective is to see what frequent common words do the presidents use and what potetntial themes to these similar words posses.The resultant visualisation can be viewed below:
+
+```{r kmeans ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="K means clustering of speech words of the 5 presidents",fig.width=12,fig.height=12 }
 library(factoextra)
 library(ggplot2)
-dtmss <- removeSparseTerms(dtm, 0.2) # This makes a matrix that is only 20% empty space, maximum.  
-d <- dist(t(dtmss), method="euclidian") 
-df=t(dtm.matrix)
+dtm = DocumentTermMatrix(dfCorpus,
+                          control = list(
+                                         stopwords = TRUE, 
+                                         wordLengths=c(5, 15),
+                                         removeSparseTerms = 0.15,
+                                         removePunctuation = T,
+                                         removeNumbers = T
+                                          )
+                                        )
+dtm.matrix = as.matrix(dtm)
+row.names(dtm.matrix)<-sona_aggr$president
 
+dtm.matrix.scaled=(apply(dtm.matrix, 1, function(x)(x-min(x))/(max(x)-min(x))))
+d <- dist(dtm.matrix.scaled, method="euclidean") 
+km.res <- kmeans(d, 3)
 
-
-km.res <- kmeans(d, 4, nstart = 25)
-
-p=fviz_cluster(km.res, data = t(dtmss),
-             palette = c("#2E9FDF", "#00AFBB", "#E7B800",'#F58E0B'), 
-             ellipse.type = "convex", # Concentration ellipse
+p=fviz_cluster(km.res, data = dtm.matrix.scaled,
+             palette = c("#2E9FDF", "#00AFBB", "#E7B800",'#F58E0B','pink'), 
+             ellipse.type = "euclid", # Concentration ellipse
              star.plot = TRUE, # Add segments from centroids to items
              #repel = TRUE, # Avoid label overplotting (slow)
              ggtheme = theme_minimal(),
              ggpar=list(xlim=c(-20,10))
              )
-p+xlim(-15, 3)
+p
 
 
 
 
 ```
+
+
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+
+\item
+
+
+\end{itemize}
+
 
 
 
@@ -285,7 +300,7 @@ p+xlim(-15, 3)
 
 ```{r deKlerk ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
-filter(President=='deKlerk') %>%  
+filter(president=='deKlerk') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
@@ -304,7 +319,7 @@ facet_grid(.~season)
 
 ```{r mandela ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
-filter(President=='Mandela') %>%  
+filter(president=='Mandela') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
@@ -328,7 +343,7 @@ facet_grid(.~season)
 
 ```{r zuma ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
-filter(President=='Zuma') %>%  
+filter(president=='Zuma') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
@@ -348,7 +363,7 @@ facet_grid(.~season)
 ```{r mbeki ,echo=FALSE,message=FALSE,warning=FALSE }
 
 tidy_sona %>%
-filter(President=='Mbeki') %>%  
+filter(president=='Mbeki') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
@@ -366,7 +381,7 @@ facet_grid(.~season)
 
 ```{r Motlanthe ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
-filter(President=='Motlanthe') %>%  
+filter(president=='Motlanthe') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
@@ -384,7 +399,7 @@ facet_grid(.~season)
 
 ```{r Ramaphosa ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
-filter(President=='Ramaphosa') %>%  
+filter(president=='Ramaphosa') %>%  
 filter(!word %in% stop_words$word) %>%
 group_by(season) %>% 
 count(word, sort = TRUE) %>% # count the number of times word used 
