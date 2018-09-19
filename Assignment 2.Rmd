@@ -79,7 +79,7 @@ tidy_sona2 %>% group_by(ID)  %>% summarize(count = n()) %>% arrange(desc(count))
 length(unique(tidy_sona2$text))
 ```
 
-###2.2 Model Construction
+###2.2 Model Architecture
 
 Once baseline parameters surrounding the data are established, we proceed with initializing the CNN with hyperparameters required for the model. CNNs are particularly useful in the case of text mining, since they exploit not only the prescence of certain words as predictors, but also the relationship between words. A part of this initialisation phase includes setting the number of features (popular words), longest sentence, and any exclusions for particularly short sentences. Another important feature of neural nets is setting the embedding dimensions. This maps the text input to a higher dimensional feature space, which almost acts as a lookup table for the classifier.
 
@@ -180,16 +180,54 @@ model %>% compile(
   metrics = "accuracy"
 )
 ```
-The training data is now used to fit a model and the accuracy is tested with the validation set.
+
+###2.3 Model Implementation
+
+The training data is now used to fit a model and the accuracy is tested with the validation set. Th
 ```{r}
 #Fit model
 model %>%
   fit(
     x_train, y_train,
     batch_size = 32,
-    epochs = 10,
+    epochs = 1,
   )
 #Validate model
 model %>% evaluate(x_test, y_test)
+
 ```
+
+We then reverse the output to get meaningful results from the classification process
+```{r}
+Predictions=model %>% predict(x_test)
+#Reverse output into president numbers
+Prediction_num=apply(Predictions, 1, function(row) which(row==max(row))-1)
+#Obtain the mapping between president names and numbers
+pres_names=unique(y)
+pres_nums=unique(tidy_sona$president)
+#pres_names
+#pres_nums
+Prediction_num[Prediction_num==3]='Mandela'
+Prediction_num[Prediction_num==2]='deKlerk'
+Prediction_num[Prediction_num==4]='Mbeki'
+Prediction_num[Prediction_num==6]='Zuma'
+Prediction_num[Prediction_num==1]='Motlanthe'
+Prediction_num[Prediction_num==5]='Ramaphosa'
+#Final Predictions
+Final_pred= Prediction_num
+```
+
+##3. Discussion of Results
+
+As shown above, after best accuracy after experimentally performing hyperparameter tuning was around XXXX. Considering that the system uses a locally trained model with a 6 class classification, this represents a successful first line approximation at building a SONA President predictor given any input sentence. Furthermore, considering that there was an unbalanced dataset since there were much more training sentences for certain president, there might have been inherent bias in the dataset which could have possibly skewed the results and accuracy. Future reccomendations would include testing the system on a more balanced set, and employing text generation techniques to fill in sentences for presidents with much lower sentence counts. In terms of the model building process, future reccomendations would be to run the model generation process on a distributed computing environment for a thorough hyperparameter search to further optimize the accuracy.
+
+##4. Conclusion
+
+A successful Convolutional Neural network was designed, implemented and tested to obtain a validation accuracy of XXXX when provided a sentence to predict a president from a set of SONA speeches used as the training data. XXXXX[Simon Stuff]
+
+##Group Contribution
+
+##References
+
+
 
