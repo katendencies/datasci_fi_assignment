@@ -85,13 +85,13 @@ Once baseline parameters surrounding the data are established, we proceed with i
 
 ```{r}
 #choose max_features most popular words
-max_features <- 10625
+max_features <- 10000
 # exclude sentences shorter than this
 minlen <- 5 
 # longest sentence (for padding)
 maxlen <- 340             
 # Number of unique words
-input_dimensions <- 10625   
+input_dimensions <- 10000   
 #Random output dimension space
 embedding_dims = 100       
 # Longest sentence
@@ -147,11 +147,12 @@ y_train= to_categorical(train$y)
 y_test <- to_categorical(test$y)
 ```
 
-We now use `Keras` to build the actual model. In terms of the model architecture, a 1D convolutional Neural Net is used with dropout regularization to prevent overfitting. A grid based hyper-parameter tuning technique is used, where a range of values were tested for optimal accuracy.
+We now use `Keras` to build the actual model. In terms of the model architecture, a 1D convolutional Neural Net is used with dropout regularization to prevent overfitting. A grid based hyper-parameter tuning technique is used, where a range of values were tested for optimal accuracy. Certain features were selected by experimentation (output dimensionality, kernal size, dropout ration, etc.) and other variables were determined due to the nature of the data. For example, softmax activation function was used due to mutually exclusive categorical classifications, the loss function used categorical cross entropy due to the binary classification output provided, etc.
 
 ```{r}
 model <- keras_model_sequential()
 
+#Define model hyperparameters - determined experimentally using grid-based technique
 model %>%
   # embedding layer maps all the features to the higher dimensional space for lookup
   layer_embedding(max_features, embedding_dims, input_length = maxlen) %>%
@@ -159,35 +160,36 @@ model %>%
   layer_dropout(0.2) %>%
   # convolutional layer
   layer_conv_1d(
-    filters = 250,
-    kernel_size = 3,
-    padding = "valid",  # "valid" means no padding, as we did it already
-    activation = "relu",
-    strides = 1
+    filters = 250, #Output dimensionality
+    kernel_size = 3, #Length of CNN window
+    padding = "valid",  # padding was already done
+    activation = "relu", #Rectified linear activation function for this layer
+    strides = 1 #The amount by which the CNN filter shifts
   ) %>%
-  layer_global_max_pooling_1d() %>%
+  layer_global_max_pooling_1d() %>% #Useful for sequential data where ordering is important ie. text
   layer_dense(128) %>%
   layer_dropout(0.2) %>%
   layer_activation("relu") %>%
-  layer_dense(7) %>%   # 7 possibilities for output layer
-  layer_activation("softmax")
+  layer_dense(7) %>%   # 7 possibilities for output layer (6 presidents and a row of 0s - NULL)
+  layer_activation("softmax") #Useful when classes are mutually exclusive
 
-?layer_conv_1d
-
+#Compile the model with loss function and other metrics
 model %>% compile(
   loss = "categorical_crossentropy",
   optimizer = "adam",
   metrics = "accuracy"
 )
-
+```
+The training data is now used to fit a model and the accuracy is tested with the validation set.
+```{r}
+#Fit model
 model %>%
   fit(
     x_train, y_train,
     batch_size = 32,
     epochs = 10,
   )
-
-
+#Validate model
 model %>% evaluate(x_test, y_test)
 ```
 
