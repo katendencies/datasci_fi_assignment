@@ -242,24 +242,28 @@ From the illustration above the following remarks can be made :
 
 \subsection{Clustering by Term Similarity}
 
-Words from the respective speeches we aggregated by the respective presidents.Words greater than 4 letters were considered so as to focus primarily on descriptive words.The resultant  word counts were then normalized to avoid biases of presidents with more speeches .
+Words from the respective speeches we aggregated by the respective presidents.Words greater than 4 letters were considered so as to focus primarily on descriptive words.Sparse elements that did not reflect at least 40% of the time in the resultant document matrix were removed.
+The resultant  word counts were then normalized to avoid biases of presidents with more speeches .
 
-K means clustering was then conducted and a  $k=2$ was selected based on the 'elbow rule'.
+K means clustering was then conducted and a  $k=4$ was selected based on the 'elbow rule'.
 
 The objective is to see what frequent common words do the presidents use and what potential themes to these similar words posses.The resultant visualization can be viewed below:
 
-```{r kmeans ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="K means clustering of speech words of the 5 presidents",fig.width=12,fig.height=12 }
+```{r kmeans ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="K means clustering of speech words of the 5 presidents",fig.width=13,fig.height=14 }
 library(factoextra)
 library(ggplot2)
+
 dtm = DocumentTermMatrix(dfCorpus,
                           control = list(
                                          stopwords = TRUE, 
                                          wordLengths=c(5, 15),
-                                         removeSparseTerms = 0.25,
+                                         
                                          removePunctuation = T,
                                          removeNumbers = T
                                           )
                                         )
+
+dtm=removeSparseTerms(dtm, 0.45)
 
 dtm.matrix = as.matrix(dtm)
 
@@ -267,7 +271,7 @@ row.names(dtm.matrix)<-sona_aggr$president
 
 dtm.matrix.scaled=(apply(dtm.matrix, 1, function(x)(x-min(x))/(max(x)-min(x))))
 d <- dist(dtm.matrix.scaled, method="euclidean") 
-km.res <- kmeans(d, 2)
+km.res <- kmeans(d, 4)
 
 p=fviz_cluster(km.res, data = dtm.matrix.scaled,
              palette = c("#2E9FDF", "#00AFBB", "#E7B800",'#F58E0B','pink'), 
@@ -289,15 +293,15 @@ From the illustration above the following remarks can be made :
 
 \begin{itemize}
 
-\item
-
-
+\item Approximately 84% of the varialbility resides in the first two principal componenets.
+\item Cluster 2 has words like \textbf{south} \textbf{africa} ,\textbf{country}, synonymous with SONA introduction/concluding paragraphs that all presidents will generally mention.
+\item 
 \end{itemize}
 
 
 
 
-\subsection{Sentiment Analysis}
+\section{Sentiment Analysis Across Political Seasons}
 
 The SONA of before and after the elections over the years are compared to determine whether there is an inherent tone difference.The *bing* lexicon was utilized in this analysis.The sentiment of the words in the lexicon were summed up to determine the net sentiment which will be referred to as polarity.Below are the results
 
@@ -378,7 +382,52 @@ From the illustration above the following remarks can be made :
 
 
 
+\section{Sentiment Analysis Across Presidential Terms}
 
+Sentiment analysis was conducted on presidents with at least a full presidential term to observe where there is seaonality on with their net sentiment over their respective terms.The presidents were:
+
+\begin{enumerate}
+\item Mandela
+\item Mbeki
+\item Zuma
+\end{enumerate}
+
+```{r Mandela_Mbeki_Zuma,fig.cap="Polarity of Presidents across their terms",echo=FALSE,message=FALSE,warning=FALSE,fig.width=12}
+library(plotly)
+mandela_polarity_year <- sona_bing %>%
+  filter(president=='Mandela')%>%
+  count(sentiment, year) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative,percent_positive = positive / (positive + negative) * 100)
+
+mbeki_polarity_year <- sona_bing %>%
+  filter(president=='Mbeki')%>%
+  count(sentiment, year) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative,percent_positive = positive / (positive + negative) * 100)
+
+zuma_polarity_year <- sona_bing %>%
+  filter(president=='Zuma')%>%
+  count(sentiment, year) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative,percent_positive = positive / (positive + negative) * 100)
+
+
+anc=c('#000000','#008F00','#FFD400')
+plot_ly(zuma_polarity_year, x = ~year, y = ~polarity, type = 'bar', name = 'Zuma',color = I(anc[3])) %>%
+   add_trace(data=mbeki_polarity_year, name = 'Mbeki',color=I(anc[2])) %>%
+    add_trace(data=mandela_polarity_year, name = 'Mandela',color=I(anc[1]))%>%
+  layout(title="Polarity overtime",yaxis=list(title="Net Sentiment"))
+```
+
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+\item Net Sentiment across the 3 presidents tend to trend up in their first 3 years of service followed by a downward trend .
+\item The most startaling change in sentiment was Mandela in his last year of service who finished off on a vary high sentiment note.
+\end{itemize}
+
+#Appendix
 ```{r deKlerk ,echo=FALSE,message=FALSE,warning=FALSE }
 tidy_sona %>%
 filter(president=='deKlerk') %>%  

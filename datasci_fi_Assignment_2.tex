@@ -203,10 +203,12 @@ From the illustration above the following remarks can be made :
 
 Words from the respective speeches we aggregated by the respective
 presidents.Words greater than 4 letters were considered so as to focus
-primarily on descriptive words.The resultant word counts were then
-normalized to avoid biases of presidents with more speeches .
+primarily on descriptive words.Sparse elements that did not reflect at
+least 40\% of the time in the resultant document matrix were removed.
+The resultant word counts were then normalized to avoid biases of
+presidents with more speeches .
 
-K means clustering was then conducted and a \(k=2\) was selected based
+K means clustering was then conducted and a \(k=4\) was selected based
 on the `elbow rule'.
 
 The objective is to see what frequent common words do the presidents use
@@ -226,12 +228,12 @@ From the illustration above the following remarks can be made :
 
 \begin{itemize}
 
-\item
-
-
+\item Approximately 84% of the varialbility resides in the first two principal componenets.
+\item Cluster 2 has words like \textbf{south} \textbf{africa} ,\textbf{country}, synonymous with SONA introduction/concluding paragraphs that all presidents will generally mention.
+\item 
 \end{itemize}
 
-\subsection{Sentiment Analysis}
+\section{Sentiment Analysis Across Political Seasons}
 
 The SONA of before and after the elections over the years are compared
 to determine whether there is an inherent tone difference.The
@@ -256,6 +258,36 @@ From the illustration above the following remarks can be made :
 \item The biggest  overall sentiment disparities before and after elections occur in 2004 and 2009.The 2004 pre/post comparison is interesting - both speeches were done by Mbeki and it showed the highest increase in net sentiment in any given year.This could be due to the fact that Mbeki had just won his second election and wanted to reassure the country with a positive speech.The 2009 pre/post comparison is counter intuitive-  one would expect that given that when Zuma was elected into power for the first time that he would have a higher net sentiment then that of the his predecessor who was there on a temporary basis.
 
 \end{itemize}
+
+\section{Sentiment Analysis Across Presidential Terms}
+
+Sentiment analysis was conducted on presidents with at least a full
+presidential term to observe where there is seaonality on with their net
+sentiment over their respective terms.The presidents were:
+
+\begin{enumerate}
+\item Mandela
+\item Mbeki
+\item Zuma
+\end{enumerate}
+
+\begin{figure}[H]
+
+{\centering \includegraphics{datasci_fi_Assignment_2_files/figure-latex/Mandela_Mbeki_Zuma-1} 
+
+}
+
+\caption{Polarity of Presidents across their terms}\label{fig:Mandela_Mbeki_Zuma}
+\end{figure}
+
+From the illustration above the following remarks can be made :
+
+\begin{itemize}
+\item Net Sentiment across the 3 presidents tend to trend up in their first 3 years of service followed by a downward trend .
+\item The most startaling change in sentiment was Mandela in his last year of service who finished off on a vary high sentiment note.
+\end{itemize}
+
+\section{Appendix}\label{appendix}
 
 \begin{center}\includegraphics{datasci_fi_Assignment_2_files/figure-latex/deKlerk -1} \end{center}
 
