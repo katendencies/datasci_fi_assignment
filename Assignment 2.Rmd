@@ -3,6 +3,16 @@ title: "Data Science for Industry - Assignment 2"
 output: html_notebook
 ---
 
+```{r}
+#Initialize environment and load libraries
+rm(list = ls())
+library(dplyr)
+library(stringr)
+library(tidyverse)
+library(keras)
+```
+
+
 #Text Mining on Sona Speeches 
 
 ##1. Introduction
@@ -20,9 +30,6 @@ The President Predictor is built using the `R Keras` neural network library.
 Firstly, the data is read in and converted into an appropriate dataframe form. This involves storing the entire speech as a row entry of a dataframe.
 
 ```{r}
-rm(list = ls())
-library(dplyr)
-library(stringr)
 txt_files <- list.files("/Users/prinpillay/Desktop/DSFI - Assignment 2/Data/sona-text-1994-2018/")
 sona <- data.frame(filename = as.character(), speech = as.character())
 for(i in txt_files){
@@ -70,16 +77,13 @@ tidy_sona2 %>% group_by(ID, text)  %>% summarize(count = n()) %>% arrange(desc(c
 tidy_sona2 %>% group_by(ID)  %>% summarize(count = n()) %>% arrange(desc(count))
 #Check for all unique words (count)
 length(unique(tidy_sona2$text))
-
 ```
 
 ###2.2 Model Construction
 
-Once baseline parameters surrounding the data are established, we proceed with initializing the CNN with hyperparameters required for the model. 
-
+Once baseline parameters surrounding the data are established, we proceed with initializing the CNN with hyperparameters required for the model. CNNs are particularly useful in the case of text mining, since they exploit not only the prescence of certain words as predictors, but also the relationship between words. A part of this initialisation phase includes setting the number of features (popular words), longest sentence, and any exclusions for particularly short sentences. Another important feature of neural nets is setting the embedding dimensions. This maps the text input to a higher dimensional feature space, which almost acts as a lookup table for the classifier.
 
 ```{r}
-
 #choose max_features most popular words
 max_features <- 10625
 # exclude sentences shorter than this
@@ -92,8 +96,11 @@ input_dimensions <- 10625
 embedding_dims = 100       
 # Longest sentence
 input_length = 340       
+```
 
-#Convert text to digits
+We now need to transform the inputs and outputs into a form which can be fed into the CNN. This involves mapping the sentences into digits, with each digit representing a unique word across all sentences in speeches. This assists the CNN in numerically mapping the words as tensors which can be used to perform numerical estimations. In terms of the outputs, the names of the various presidents need to be converted to categorical information.
+```{r}
+#Convert text to digits based on the maximum number of features
 tokenizer = text_tokenizer(num_words = max_features)
 fit_text_tokenizer(tokenizer, tidy_sona$text)
 sequences = tokenizer$texts_to_sequences(tidy_sona$text)
@@ -106,20 +113,26 @@ sequences <- Filter(lengthIs(minlen), sequences)
 #Convert outputs to multiclass integer
 y <- as.numeric(as.factor(tidy_sona$president[seq_ok]))
 y = as.integer(y)
+```
 
+The next important step in model construction is splitting the data into a training and validation set. This is valuable to determine the out-of-sample error obtained when performing hyperparameter tuning for optimal model conditions. For this particular sample, a 90/10 split was used where 90% of the data is used for training, and 10% of the data is used for validation. Considering that text mining is a relatively difficult classification problem, we want to make as much data available for the training process to enhance the prediction accuracy.
 
+```{r}
 #Generate test and train set
 train <- list()
 test<- list()
-
+#Perform a 90/10 split for training/validation
 train_id <- sample(1:length(sequences),
                 size = 0.9*length(sequences), 
                 replace=F)
-
 test$x <-  sequences[-train_id]
 train$x <- sequences[train_id]
+
+#We now also perform a split on the output 
 train$y <- y[train_id]
 test$y <-  y[-train_id]
+
+
 x_train <- train$x %>% pad_sequences(maxlen = maxlen)
 x_test <- test$x %>% pad_sequences(maxlen = maxlen)
 
@@ -127,6 +140,7 @@ y_train= to_categorical(train$y)
 y_test <- to_categorical(test$y)
 
 ```
+
 
 Build model
 
