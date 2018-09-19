@@ -1,0 +1,161 @@
+---
+title: "Data Science for Industry - Assignment 2"
+output: html_notebook
+---
+
+Training a neural network to predict which president said a line.
+
+Step 1: Text mining for neural net inputs.
+
+First we read in the data 
+
+```{r}
+rm(list = ls())
+
+library(stringr)
+txt_files <- list.files("/Users/prinpillay/Desktop/DSFI - Assignment 2/Data/sona-text-1994-2018/")
+
+sona <- data.frame(filename = as.character(), speech = as.character())
+
+for(i in txt_files){
+  file_name <- paste0("/Users/prinpillay/Desktop/DSFI - Assignment 2/Data/sona-text-1994-2018/", i)
+  
+  # import text as single character string (can also read.table but the "seperator" causes problems)
+  this_speech <- readChar(file_name, 
+                          nchars = file.info(file_name)$size)
+  
+  # make data frame with metadata (filename contains year and pres) and speech
+  this_sona <- data.frame(filename = i, speech = this_speech, stringsAsFactors = FALSE)
+  
+  # make a single dataset
+  sona <- rbind(sona, this_sona)
+}
+```
+
+Extract year and president
+
+```{r}
+#Extract the year
+sona$year <- str_sub(sona$filename, start = 1, end = 4)
+#Extract all names removing txt
+sona$president <- str_sub(sona$filename, start = 6, end=-5)
+#Now we remove pre and post election prefixes
+sona$president[str_detect(sona$pre,'post')]=str_sub(sona$president[str_detect(sona$pre, 'post')], start = 16)
+sona$president[str_detect(sona$pre,'pre')]=str_sub(sona$president[str_detect(sona$pre, 'pre')], start = 15)
+sona$president
+```
+
+Now we unnest tokens to get training inputs
+
+```{r}
+library(tidytext)
+sona %>% unnest_tokens(text, speech, token = "words")
+tidy_sona <- sona %>% unnest_tokens(text, speech, token = "sentences")
+```
+
+
+Explore the data set
+
+```{r}
+
+
+tidy_sona$ID <- seq.int(nrow(tidy_sona))
+tidy_sona
+
+tidy_sona2 = tidy_sona %>% unnest_tokens(text, text, token = "words")
+tidy_sona2
+tidy_sona2 %>% group_by(ID, text)  %>% summarize(count = n()) %>% arrange(desc(count))
+tidy_sona2 %>% group_by(ID)  %>% summarize(count = n()) %>% arrange(desc(count))
+length(unique(tidy_sona2$text))
+
+```
+
+Setup Keras Model
+
+
+```{r}
+
+max_features <- 10625# choose max_features most popular words
+minlen <- 5               # exclude sentences shorter than this
+maxlen <- 340               # longest sentence (for padding)
+input_dimensions <- 10625   # Number of unique words
+embedding_dims = 100        #Random output dimension space
+input_length = 340          # Longest sentence
+
+#Convert text to digits
+tokenizer = text_tokenizer(num_words = max_features)
+fit_text_tokenizer(tokenizer, tidy_sona$text)
+sequences = tokenizer$texts_to_sequences(tidy_sona$text)
+
+#Remove short sentences
+seq_ok <- unlist(lapply(sequences, length)) > minlen
+lengthIs <- function(n) function(x) length(x)>n
+sequences <- Filter(lengthIs(minlen), sequences)
+
+#Convert outputs to multiclass integer
+y <- as.numeric(as.factor(tidy_sona$president[seq_ok]))
+y = as.integer(y)
+
+
+#Generate test and train set
+train <- list()
+test<- list()
+
+train_id <- sample(1:length(sequences),
+                size = 0.9*length(sequences), 
+                replace=F)
+
+test$x <-  sequences[-train_id]
+train$x <- sequences[train_id]
+train$y <- y[train_id]
+test$y <-  y[-train_id]
+x_train <- train$x %>% pad_sequences(maxlen = maxlen)
+x_test <- test$x %>% pad_sequences(maxlen = maxlen)
+
+y_train= to_categorical(train$y)
+y_test <- to_categorical(test$y)
+
+```
+
+Build model
+
+```{r}
+model <- keras_model_sequential()
+
+model %>%
+  # embedding layer maps vocab indices into embedding_dims dimensions
+  layer_embedding(max_features, embedding_dims, input_length = maxlen) %>%
+  # add some dropout
+  layer_dropout(0.2) %>%
+  # convolutional layer
+  layer_conv_1d(
+    filters = 250,
+    kernel_size = 3,
+    padding = "valid",  # "valid" means no padding, as we did it already
+    activation = "relu",
+    strides = 1
+  ) %>%
+  layer_global_max_pooling_1d() %>%
+  layer_dense(128) %>%
+  layer_dropout(0.2) %>%
+  layer_activation("relu") %>%
+  layer_dense(7) %>%   # 7 possibilities for output layer
+  layer_activation("softmax")
+
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = "adam",
+  metrics = "accuracy"
+)
+
+model %>%
+  fit(
+    x_train, y_train,
+    batch_size = 32,
+    epochs = 10,
+  )
+
+
+model %>% evaluate(x_test, y_test)
+```
+
