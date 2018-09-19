@@ -295,7 +295,7 @@ From the illustration above the following remarks can be made :
 
 \item Approximately 84% of the varialbility resides in the first two principal componenets.
 \item Cluster 2 has words like \textbf{south} \textbf{africa} ,\textbf{country}, synonymous with SONA introduction/concluding paragraphs that all presidents will generally mention.
-\item 
+\item Cluster 1 portrays a very serious tone.The theme that comes to mind is pertient issues that need to be addressed.Words include \textbf{concerns},\textbf{security},\textbf{education},\textbf{address}.
 \end{itemize}
 
 
@@ -428,7 +428,7 @@ From the illustration above the following remarks can be made :
 \end{itemize}
 
 #Appendix
-```{r deKlerk ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r deKlerk ,echo=FALSE,message=FALSE,warning=FALSE ,fig.cap="Top Words used by de Klerk"}
 tidy_sona %>%
 filter(president=='deKlerk') %>%  
 filter(!word %in% stop_words$word) %>%
@@ -447,7 +447,7 @@ facet_grid(.~season)
 ```
 
 
-```{r mandela ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r mandela ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Top Words used by Mandela" }
 tidy_sona %>%
 filter(president=='Mandela') %>%  
 filter(!word %in% stop_words$word) %>%
@@ -471,7 +471,7 @@ facet_grid(.~season)
 
 
 
-```{r zuma ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r zuma ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Top Words used by Zuma" }
 tidy_sona %>%
 filter(president=='Zuma') %>%  
 filter(!word %in% stop_words$word) %>%
@@ -490,7 +490,7 @@ facet_grid(.~season)
 ```
 
 
-```{r mbeki ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r mbeki ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Top Words used by Mbeki" }
 
 tidy_sona %>%
 filter(president=='Mbeki') %>%  
@@ -509,7 +509,7 @@ coord_flip() +
 facet_grid(.~season)
 ```
 
-```{r Motlanthe ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r Motlanthe ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Top Words used by Motlanthe" }
 tidy_sona %>%
 filter(president=='Motlanthe') %>%  
 filter(!word %in% stop_words$word) %>%
@@ -527,7 +527,7 @@ coord_flip() +
 facet_grid(.~season)
 ```
 
-```{r Ramaphosa ,echo=FALSE,message=FALSE,warning=FALSE }
+```{r Ramaphosa ,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Top Words used by Ramaphosa" }
 tidy_sona %>%
 filter(president=='Ramaphosa') %>%  
 filter(!word %in% stop_words$word) %>%
