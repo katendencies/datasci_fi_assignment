@@ -131,24 +131,29 @@ train$x <- sequences[train_id]
 #We now also perform a split on the output 
 train$y <- y[train_id]
 test$y <-  y[-train_id]
+```
 
+We also pad the inputs to the length of the longest sentences, to ensure all inputs are the same size.
 
+```{r}
 x_train <- train$x %>% pad_sequences(maxlen = maxlen)
 x_test <- test$x %>% pad_sequences(maxlen = maxlen)
 
+```
+Another important step is transforming the numerical outputs into a binary classification matrix as required by the Keras CNN.
+```{r}
+#Transform train and test outputs into binary classification matrix
 y_train= to_categorical(train$y)
 y_test <- to_categorical(test$y)
-
 ```
 
-
-Build model
+We now use `Keras` to build the actual model. In terms of the model architecture, a 1D convolutional Neural Net is used with dropout regularization to prevent overfitting. A grid based hyper-parameter tuning technique is used, where a range of values were tested for optimal accuracy.
 
 ```{r}
 model <- keras_model_sequential()
 
 model %>%
-  # embedding layer maps vocab indices into embedding_dims dimensions
+  # embedding layer maps all the features to the higher dimensional space for lookup
   layer_embedding(max_features, embedding_dims, input_length = maxlen) %>%
   # add some dropout
   layer_dropout(0.2) %>%
@@ -166,6 +171,8 @@ model %>%
   layer_activation("relu") %>%
   layer_dense(7) %>%   # 7 possibilities for output layer
   layer_activation("softmax")
+
+?layer_conv_1d
 
 model %>% compile(
   loss = "categorical_crossentropy",
