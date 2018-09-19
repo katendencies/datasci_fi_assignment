@@ -169,9 +169,9 @@ speeches rescaled according to their respective political seasons :
 From the illustration above the following remarks can be made :
 
 \begin{itemize}
-\item Notable words commonly used across all political seasons are \textbf{south}, \textbf{africa},\textbf{government},\textbf{develpment},\textbf{people},\textbf{country},\textbf{programme}.These words will potentially not assist in distinguishing the respective presidents.
+\item Notable words commonly used across all political seasons are \textbf{south}, \textbf{africa},\textbf{government},\textbf{development},\textbf{people},\textbf{country},\textbf{programme}.These words will potentially not assist in distinguishing the respective presidents.
 
-\item Comparing pre and post to normal political seasons ,notable words like \textbf{economy} and \textbf{growth} are introduced into their speeches .The utilisation of these words (which could imply economic growth) are understandable given that these are typical themes that need to be addressed constantly throughout the normal period of presidential terms.
+\item Comparing pre and post to normal political seasons ,notable words like \textbf{economy} and \textbf{growth} are introduced into their speeches .The utilization of these words (which could imply economic growth) are understandable given that these are typical themes that need to be addressed constantly throughout the normal period of presidential terms.
 
 \item Comparing pre to post political seasons,uplifting words like \textbf{freedom},\textbf{hope},\textbf{africans} are used before and not after elections.
 
@@ -204,14 +204,14 @@ From the illustration above the following remarks can be made :
 Words from the respective speeches we aggregated by the respective
 presidents.Words greater than 4 letters were considered so as to focus
 primarily on descriptive words.The resultant word counts were then
-normalised to avoid biases of presidents with more speeches .
+normalized to avoid biases of presidents with more speeches .
 
 K means clustering was then conducted and a \(k=2\) was selected based
 on the `elbow rule'.
 
 The objective is to see what frequent common words do the presidents use
-and what potetntial themes to these similar words posses.The resultant
-visualisation can be viewed below:
+and what potential themes to these similar words posses.The resultant
+visualization can be viewed below:
 
 \begin{figure}[H]
 
@@ -233,6 +233,12 @@ From the illustration above the following remarks can be made :
 
 \subsection{Sentiment Analysis}
 
+The SONA of before and after the elections over the years are compared
+to determine whether there is an inherent tone difference.The
+\emph{bing} lexicon was utilized in this analysis.The sentiment of the
+words in the lexicon were summed up to determine the net sentiment which
+will be referred to as polarity.Below are the results
+
 \begin{figure}[H]
 
 {\centering \includegraphics{datasci_fi_Assignment_2_files/figure-latex/pre_post_sentiment -1} 
@@ -246,9 +252,8 @@ From the illustration above the following remarks can be made :
 
 \begin{itemize}
 
-\item
-\item
-\item
+\item There is an interesting behavior in the first 3 election years (1994,1999,2004) there was an improvement in overall sentiment after the elections,however in the more recent 2 election years (2009,2014) there has been a more cautionary tone after elections  
+\item The biggest  overall sentiment disparities before and after elections occur in 2004 and 2009.The 2004 pre/post comparison is interesting - both speeches were done by Mbeki and it showed the highest increase in net sentiment in any given year.This could be due to the fact that Mbeki had just won his second election and wanted to reassure the country with a positive speech.The 2009 pre/post comparison is counter intuitive-  one would expect that given that when Zuma was elected into power for the first time that he would have a higher net sentiment then that of the his predecessor who was there on a temporary basis.
 
 \end{itemize}
 
