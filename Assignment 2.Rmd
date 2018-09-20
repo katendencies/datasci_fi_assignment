@@ -17,6 +17,7 @@ library(keras)
 
 ##1. Introduction
 
+
 The State of the Nation Address (SONA) is an annual event in South Africa which drives significant political and economic impact, since the president reports on the current status of the country. Gaining deeper insight into the various speeches from different presidents can provide a foundation for political prediction engines. A convolutional neural network is used to predict which president was the source of a statement, given a particular sentence as an input. This can provide insight into the similarities and trends between different presidents' speeches, and determining possible overlap between key statements issues annually. [XXXSimon StuffXXX]
 
 ##2. Convolutional Neural Network
