@@ -157,7 +157,7 @@ model %>%
   # embedding layer maps all the features to the higher dimensional space for lookup
   layer_embedding(max_features, embedding_dims, input_length = maxlen) %>%
   # add some dropout
-  layer_dropout(0.2) %>%
+  layer_dropout(0.3) %>%
   # convolutional layer
   layer_conv_1d(
     filters = 250, #Output dimensionality
@@ -168,7 +168,7 @@ model %>%
   ) %>%
   layer_global_max_pooling_1d() %>% #Useful for sequential data where ordering is important ie. text
   layer_dense(128) %>%
-  layer_dropout(0.2) %>%
+  layer_dropout(0.3) %>%
   layer_activation("relu") %>%
   layer_dense(7) %>%   # 7 possibilities for output layer (6 presidents and a row of 0s - NULL)
   layer_activation("softmax") #Useful when classes are mutually exclusive
@@ -190,7 +190,7 @@ model %>%
   fit(
     x_train, y_train,
     batch_size = 32,
-    epochs = 1,
+    epochs = 6,
   )
 #Validate model
 model %>% evaluate(x_test, y_test)
