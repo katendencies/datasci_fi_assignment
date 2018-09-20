@@ -1,5 +1,5 @@
 ---
-title: Data Science for Industry Project 2
+title: Descriptive Analysis
 author: 
 bibliography: bibliography.bib
 output:
@@ -34,7 +34,7 @@ header-includes:
 knitr::opts_chunk$set(fig.pos = 'H')
 ```
 
-\section{Introduction}
+
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 knitr::opts_chunk$set(echo = FALSE,tidy = TRUE,cache=TRUE,fig.align = 'center',size=10,fig.pos = 'H',tidy=TRUE)
