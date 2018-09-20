@@ -1,0 +1,236 @@
+---
+title: "Data Science For Industry - Assignment 2 "
+author: 'Prinavan Pillay(PLLPRI017), Simon Katende(KTNSIM001), Dirren Subbiah(SBBDIR001)'
+date: "20/10/2018"
+output:
+  pdf_document: default
+  html_document: default
+subtitle: University of Cape Town - Department of Statistical Sciences
+---
+
+#Part 1 - President Predictor using Neural Networks
+```{r, eval=FALSE, echo=FALSE}
+#Initialize environment and load libraries
+rm(list = ls())
+library(dplyr)
+library(stringr)
+library(tidyverse)
+library(keras)
+```
+
+##1. Introduction
+
+The State of the Nation Address (SONA) is an annual event in South Africa which drives significant political and economic impact, since the president reports on the current status of the country. Gaining deeper insight into the various speeches from different presidents can provide a foundation for political prediction engines. A convolution neural network is used to predict which president was the source of a statement, given a particular sentence as an input. This can provide insight into the similarities and trends between different presidents' speeches, and determining possible overlap between key statements issues annually. 
+
+##2. Convolutional Neural Network
+
+Neural networks have gained popularity in recent times for complex classifications, due to advancements in distributed computing environments. Furthermore, neural nets allow one to artificially model the way the human brain makes decisions, which address complex classification tasks such as vision, speech, and natural language processing. 
+
+The President Predictor is built using the `R Keras` neural network library.
+
+###2.1 Data Preprocessing
+
+Firstly, the data is read in and converted into an appropriate dataframe form. This involves storing the entire speech as a row entry of a dataframe.
+
+```{r, eval=FALSE}
+txt_files <- list.files("/Users/prinpillay/Desktop/DSFI - Assignment 2/Data/sona-text-1994-2018/")
+sona <- data.frame(filename = as.character(), speech = as.character())
+for(i in txt_files){
+  file_name <- paste0("/Users/prinpillay/Desktop/DSFI - Assignment 2/Data/sona-text-1994-2018/", i)
+  # import text as single character string (can also read.table but the "seperator" causes problems)
+  this_speech <- readChar(file_name, 
+                          nchars = file.info(file_name)$size)
+  # make data frame with metadata (filename contains year and pres) and speech
+  this_sona <- data.frame(filename = i, speech = this_speech, stringsAsFactors = FALSE)
+  # make a single dataset
+  sona <- rbind(sona, this_sona)
+}
+```
+
+We then perform extra processing to determine the Year and the name of the President for a particular speech.
+
+```{r, eval=FALSE}
+#Extract the year
+sona$year <- str_sub(sona$filename, start = 1, end = 4)
+#Extract all names removing txt
+sona$president <- str_sub(sona$filename, start = 6, end=-5)
+#Now we remove pre and post election prefixes
+sona$president[str_detect(sona$pre,'post')]=
+  str_sub(sona$president[str_detect(sona$pre, 'post')], start = 16)
+sona$president[str_detect(sona$pre,'pre')]=
+  str_sub(sona$president[str_detect(sona$pre, 'pre')], start = 15)
+```
+
+We then use tokenization to unnest the speech into sentences which can be used as inputs to the neural network model.
+
+```{r, eval=FALSE}
+library(tidytext)
+tidy_sona <- sona %>% unnest_tokens(text, speech, token = "sentences")
+```
+
+Exploratory analysis is used to determine the appropriate hyperparameters that will be used in the CNN model. This involves determining the unique number of words in all the speeches, the longest sentence and the frequency of particular words. The process of string manipulation involves unnesting the speech row into words, and then extracting the required features.
+
+```{r, eval=FALSE}
+
+# Apply a sentence ID to the dataframe
+tidy_sona$ID <- seq.int(nrow(tidy_sona))
+#Unnest the data into words
+tidy_sona2 = tidy_sona %>% unnest_tokens(text, text, token = "words")
+#Check the most frequent words in all the text, according to sentence ID
+tidy_sona2 %>% group_by(ID, text)  %>% summarize(count = n()) %>% arrange(desc(count))
+#Check for the longest sentence
+tidy_sona2 %>% group_by(ID)  %>% summarize(count = n()) %>% arrange(desc(count))
+#Check for all unique words (count)
+length(unique(tidy_sona2$text))
+```
+
+###2.2 Model Architecture
+
+Once baseline parameters surrounding the data are established, we proceed with initializing the CNN with hyperparameters required for the model. CNNs are particularly useful in the case of text mining, since they exploit not only the presence of certain words as predictors, but also the relationship between words. A part of this initialization phase includes setting the number of features (popular words), longest sentence, and any exclusions for particularly short sentences. Another important feature of neural nets is setting the embedding dimensions. This maps the text input to a higher dimensional feature space, which almost acts as a lookup table for the classifier.
+
+```{r, eval=FALSE}
+#choose max_features most popular words
+max_features <- 10000
+# exclude sentences shorter than this
+minlen <- 5 
+# longest sentence (for padding)
+maxlen <- 340             
+# Number of unique words
+input_dimensions <- 10000   
+#Random output dimension space
+embedding_dims = 100       
+# Longest sentence
+input_length = 340       
+```
+
+We now need to transform the inputs and outputs into a form which can be fed into the CNN. This involves mapping the sentences into digits, with each digit representing a unique word across all sentences in speeches. This assists the CNN in numerically mapping the words as tensors which can be used to perform numerical estimations. In terms of the outputs, the names of the various presidents need to be converted to categorical information.
+```{r, eval=FALSE}
+#Convert text to digits based on the maximum number of features
+tokenizer = text_tokenizer(num_words = max_features)
+fit_text_tokenizer(tokenizer, tidy_sona$text)
+sequences = tokenizer$texts_to_sequences(tidy_sona$text)
+
+#Remove short sentences
+seq_ok <- unlist(lapply(sequences, length)) > minlen
+lengthIs <- function(n) function(x) length(x)>n
+sequences <- Filter(lengthIs(minlen), sequences)
+
+#Convert outputs to multiclass integer
+y <- as.numeric(as.factor(tidy_sona$president[seq_ok]))
+y = as.integer(y)
+```
+
+The next important step in model construction is splitting the data into a training and validation set. This is valuable to determine the out-of-sample error obtained when performing hyperparameter tuning for optimal model conditions. For this particular sample, a 90/10 split was used where 90% of the data is used for training, and 10% of the data is used for validation. Considering that text mining is a relatively difficult classification problem, we want to make as much data available for the training process to enhance the prediction accuracy.
+
+```{r, eval=FALSE}
+#Generate test and train set
+train <- list()
+test<- list()
+#Perform a 90/10 split for training/validation
+train_id <- sample(1:length(sequences),
+                size = 0.9*length(sequences), 
+                replace=F)
+test$x <-  sequences[-train_id]
+train$x <- sequences[train_id]
+
+#We now also perform a split on the output 
+train$y <- y[train_id]
+test$y <-  y[-train_id]
+```
+
+We also pad the inputs to the length of the longest sentences, to ensure all inputs are the same size.
+
+```{r, eval=FALSE}
+x_train <- train$x %>% pad_sequences(maxlen = maxlen)
+x_test <- test$x %>% pad_sequences(maxlen = maxlen)
+
+```
+Another important step is transforming the numerical outputs into a binary classification matrix as required by the Keras CNN.
+```{r, eval=FALSE}
+#Transform train and test outputs into binary classification matrix
+y_train= to_categorical(train$y)
+y_test <- to_categorical(test$y)
+```
+
+We now use `Keras` to build the actual model. In terms of the model architecture, a 1D convolutional Neural Net is used with dropout regularization to prevent overfitting. A grid based hyper-parameter tuning technique is used, where a range of values were tested for optimal accuracy. Certain features were selected by experimentation (output dimensionality, kernel size, dropout ration, etc.) and other variables were determined due to the nature of the data. For example, softmax activation function was used due to mutually exclusive categorical classifications, the loss function used categorical cross entropy due to the binary classification output provided, etc.
+
+```{r, eval=FALSE}
+model <- keras_model_sequential()
+
+#Define model hyperparameters - determined experimentally using grid-based technique
+model %>%
+  # embedding layer maps all the features to the higher dimensional space for lookup
+  layer_embedding(max_features, embedding_dims, input_length = maxlen) %>%
+  # add some dropout
+  layer_dropout(0.3) %>%
+  # convolutional layer
+  layer_conv_1d(
+    filters = 250, #Output dimensionality
+    kernel_size = 3, #Length of CNN window
+    padding = "valid",  # padding was already done
+    activation = "relu", #Rectified linear activation function for this layer
+    strides = 1 #The amount by which the CNN filter shifts
+  ) %>%
+  layer_global_max_pooling_1d() %>% #Useful for sequential data where ordering is important ie. text
+  layer_dense(128) %>%
+  layer_dropout(0.3) %>%
+  layer_activation("relu") %>%
+  layer_dense(7) %>%   # 7 possibilities for output layer (6 presidents and a row of 0s - NULL)
+  layer_activation("softmax") #Useful when classes are mutually exclusive
+
+#Compile the model with loss function and other metrics
+model %>% compile(
+  loss = "categorical_crossentropy",
+  optimizer = "adam",
+  metrics = "accuracy"
+)
+```
+
+###2.3 Model Implementation
+
+The training data is now used to fit a model and the accuracy is tested with the validation set. Th
+```{r, eval=FALSE}
+#Fit model
+model %>%
+  fit(
+    x_train, y_train,
+    batch_size = 32,
+    epochs = 6,
+  )
+#Validate model
+model %>% evaluate(x_test, y_test)
+
+```
+
+We then reverse the output to get meaningful results from the classification process
+```{r, eval=FALSE}
+Predictions=model %>% predict(x_test)
+#Reverse output into president numbers
+Prediction_num=apply(Predictions, 1, function(row) which(row==max(row))-1)
+#Obtain the mapping between president names and numbers
+pres_names=unique(y)
+pres_nums=unique(tidy_sona$president)
+#pres_names
+#pres_nums
+Prediction_num[Prediction_num==3]='Mandela'
+Prediction_num[Prediction_num==2]='deKlerk'
+Prediction_num[Prediction_num==4]='Mbeki'
+Prediction_num[Prediction_num==6]='Zuma'
+Prediction_num[Prediction_num==1]='Motlanthe'
+Prediction_num[Prediction_num==5]='Ramaphosa'
+#Final Predictions
+Final_pred= Prediction_num
+```
+
+
+##3. Discussion of Results
+
+As shown above, after best accuracy after experimentally performing hyperparameter tuning was around 63.2%. Considering that the system uses a locally trained model with a 6 class classification, this represents a successful first line approximation at building a SONA President predictor given any input sentence. Furthermore, considering that there was an unbalanced dataset since there were much more training sentences for certain president, there might have been inherent bias in the dataset which could have possibly skewed the results and accuracy. Future recommendations would include testing the system on a more balanced set, and employing text generation techniques to fill in sentences for presidents with much lower sentence counts. In terms of the model building process, future recommendations would be to run the model generation process on a distributed computing environment for a thorough hyperparameter search to further optimize the accuracy.
+
+##4. Conclusion
+
+A successful Neural network was designed, implemented and tested to obtain a validation accuracy of 63.2% when provided a sentence to predict a president from a set of SONA speeches used as the training data. 
+
+
+
+
